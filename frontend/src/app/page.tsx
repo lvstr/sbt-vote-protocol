@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import { WalletButton } from "@/components/WalletButton";
 import { VotePanel } from "@/components/VotePanel";
 import { ResultsPanel } from "@/components/ResultsPanel";
@@ -36,14 +37,12 @@ export default function Home() {
       setCandidateCount(count);
       setVotingOpen(open);
 
-      // Fetch votes for each candidate
       const votesPromises = Array.from({ length: count }, (_, i) =>
         getVotes(i + 1).then((votes) => ({ candidateId: i + 1, votes }))
       );
       const votesResults = await Promise.all(votesPromises);
       setResults(votesResults);
 
-      // Fetch voter status if connected
       if (address) {
         const record = await getVoterRecord(address);
         setVoterStatus({
@@ -69,52 +68,84 @@ export default function Home() {
   }, [fetchData]);
 
   return (
-    <main className="min-h-screen p-6 max-w-5xl mx-auto space-y-6">
-      {/* Header */}
-      <header className="flex justify-between items-center py-4">
-        <div>
-          <h1 className="text-2xl font-bold">SBT Vote Protocol</h1>
-          <p className="text-sm text-gray-400">
-            Decentralized voting with Soulbound Tokens on Stellar
-          </p>
+    <div className="min-h-screen">
+      {/* Background gradient accent */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-brand-600/5 rounded-full blur-3xl" />
+      </div>
+
+      <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* Header */}
+        <header className="flex items-center justify-between py-4">
+          <div className="flex items-center gap-3">
+            <Image
+              src="/soulbound.png"
+              alt="SBT Vote Protocol"
+              width={40}
+              height={40}
+              className="rounded-lg"
+            />
+            <div>
+              <h1 className="text-xl font-bold tracking-tight">
+                SBT Vote
+              </h1>
+              <p className="text-xs text-gray-500">
+                Soulbound Voting on Stellar
+              </p>
+            </div>
+          </div>
+          <WalletButton />
+        </header>
+
+        {/* Status Banner */}
+        <div
+          className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border ${
+            votingOpen
+              ? "bg-green-950/20 text-green-400 border-green-800/40"
+              : "bg-red-950/20 text-red-400 border-red-800/40"
+          }`}
+        >
+          <span
+            className={`w-2 h-2 rounded-full ${
+              votingOpen ? "bg-green-400 animate-pulse-slow" : "bg-red-400"
+            }`}
+          />
+          Voting is {votingOpen ? "Open" : "Closed"}
         </div>
-        <WalletButton />
-      </header>
 
-      {/* Voting status banner */}
-      <div
-        className={`text-center py-2 rounded-lg text-sm font-medium ${
-          votingOpen
-            ? "bg-green-900/20 text-green-400 border border-green-800"
-            : "bg-red-900/20 text-red-400 border border-red-800"
-        }`}
-      >
-        Voting is {votingOpen ? "OPEN" : "CLOSED"}
-      </div>
+        {/* Voter Status */}
+        {isConnected && (
+          <VoterStatus
+            address={address}
+            hasSbt={voterStatus.hasSbt}
+            hasVoted={voterStatus.hasVoted}
+            isLoading={isLoading}
+          />
+        )}
 
-      {/* Voter status */}
-      {isConnected && (
-        <VoterStatus
-          address={address}
-          hasSbt={voterStatus.hasSbt}
-          hasVoted={voterStatus.hasVoted}
-          isLoading={isLoading}
-        />
-      )}
+        {/* Main 2-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <VotePanel candidateCount={candidateCount} onVoteSuccess={fetchData} />
+          <ResultsPanel results={results} isLoading={isLoading} />
+        </div>
 
-      {/* Main grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <VotePanel candidateCount={candidateCount} onVoteSuccess={fetchData} />
-        <ResultsPanel results={results} isLoading={isLoading} />
-      </div>
+        {/* Event Feed */}
+        <EventFeed />
 
-      {/* Event feed */}
-      <EventFeed />
-
-      {/* Footer */}
-      <footer className="text-center text-sm text-gray-500 py-4">
-        Built on Stellar Soroban &middot; Testnet
-      </footer>
-    </main>
+        {/* Footer */}
+        <footer className="flex items-center justify-center gap-2 py-6 text-xs text-gray-600">
+          <Image
+            src="/soulbound.png"
+            alt=""
+            width={16}
+            height={16}
+            className="rounded opacity-50"
+          />
+          <span>Built on Stellar Soroban</span>
+          <span className="text-gray-700">&middot;</span>
+          <span>Testnet</span>
+        </footer>
+      </main>
+    </div>
   );
 }

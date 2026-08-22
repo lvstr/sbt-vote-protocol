@@ -1,4 +1,5 @@
 import * as StellarSdk from "@stellar/stellar-sdk";
+import { rpc } from "@stellar/stellar-sdk";
 
 export const NETWORK = process.env.NEXT_PUBLIC_NETWORK || "testnet";
 export const NETWORK_PASSPHRASE =
@@ -9,8 +10,8 @@ export const SOROBAN_RPC_URL =
   "https://soroban-testnet.stellar.org";
 export const CONTRACT_ID = process.env.NEXT_PUBLIC_CONTRACT_ID || "";
 
-export function getServer(): StellarSdk.SorobanRpc.Server {
-  return new StellarSdk.SorobanRpc.Server(SOROBAN_RPC_URL);
+export function getServer(): rpc.Server {
+  return new rpc.Server(SOROBAN_RPC_URL);
 }
 
 export function getContract(): StellarSdk.Contract {
@@ -46,7 +47,7 @@ export async function buildTransaction(
  */
 export async function submitTransaction(
   signedXdr: string
-): Promise<StellarSdk.SorobanRpc.Api.GetTransactionResponse> {
+): Promise<rpc.Api.GetTransactionResponse> {
   const server = getServer();
   const tx = StellarSdk.TransactionBuilder.fromXDR(
     signedXdr,
@@ -73,7 +74,7 @@ export async function submitTransaction(
  */
 export async function getContractEvents(
   startLedger?: number
-): Promise<StellarSdk.SorobanRpc.Api.EventResponse> {
+): Promise<rpc.Api.GetEventsResponse> {
   const server = getServer();
 
   const latestLedger = await server.getLatestLedger();

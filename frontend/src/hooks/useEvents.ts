@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { rpc } from "@stellar/stellar-sdk";
 import { getContractEvents } from "@/lib/stellar";
 
 export interface ContractEvent {
@@ -27,12 +28,19 @@ export function useEvents(intervalMs: number = 5000) {
 
       if (response.events && response.events.length > 0) {
         const newEvents: ContractEvent[] = response.events.map(
-          (event, idx) => ({
+          (event: rpc.Api.EventResponse, idx: number) => ({
             id: `${event.id || idx}-${Date.now()}`,
-            type: event.topic
-              .map((t) => t.toString())
-              .find((t) => t.includes("mint") || t.includes("vote")) || "unknown",
-            topic: event.topic.map((t) => t.toString()),
+            type:
+              event.topic
+                .map((t: rpc.Api.EventResponse["topic"][number]) =>
+                  t.toString()
+                )
+                .find(
+                  (t: string) => t.includes("mint") || t.includes("vote")
+                ) || "unknown",
+            topic: event.topic.map(
+              (t: rpc.Api.EventResponse["topic"][number]) => t.toString()
+            ),
             data: event.value.toString(),
             ledger: event.ledger,
             timestamp: new Date(),

@@ -12,7 +12,7 @@ export function WalletButton() {
         href="https://www.freighter.app/"
         target="_blank"
         rel="noopener noreferrer"
-        className="px-4 py-2 bg-stellar-purple rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+        className="btn-primary text-sm"
       >
         Install Freighter
       </a>
@@ -22,13 +22,13 @@ export function WalletButton() {
   if (isConnected && address) {
     return (
       <div className="flex items-center gap-3">
-        <span className="text-sm text-gray-300 font-mono">
-          {address.slice(0, 4)}...{address.slice(-4)}
-        </span>
-        <button
-          onClick={disconnect}
-          className="px-3 py-1.5 bg-stellar-card border border-stellar-border rounded-lg text-sm hover:bg-red-900/30 transition-colors"
-        >
+        <div className="flex items-center gap-2 bg-surface-200 border border-surface-400 rounded-xl px-3 py-2">
+          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse-slow" />
+          <span className="text-sm text-gray-300 font-mono">
+            {address.slice(0, 6)}...{address.slice(-4)}
+          </span>
+        </div>
+        <button onClick={disconnect} className="btn-secondary text-sm">
           Disconnect
         </button>
       </div>
@@ -36,10 +36,7 @@ export function WalletButton() {
   }
 
   return (
-    <button
-      onClick={connect}
-      className="px-4 py-2 bg-stellar-purple rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
-    >
+    <button onClick={connect} className="btn-primary text-sm">
       Connect Wallet
     </button>
   );
