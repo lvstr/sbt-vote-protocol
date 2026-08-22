@@ -33,18 +33,25 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({
     const checkFreighter = async () => {
       try {
         const freighterApi = await import("@stellar/freighter-api");
-        const connected = await freighterApi.isConnected();
-        setIsFreighterInstalled(connected);
 
-        // Check if user previously connected (and did not click disconnect)
+        // Freighter API v6: isConnected() → { isConnected: boolean, error? }
+        const connResult = await freighterApi.isConnected();
+        const isInstalled = connResult.isConnected;
+        setIsFreighterInstalled(isInstalled);
+
         const wasConnected =
           localStorage.getItem(STORAGE_WALLET_CONNECTED) === "true";
 
-        if (connected && wasConnected) {
-          const pubKey = await freighterApi.getPublicKey();
-          if (pubKey) {
-            setAddress(pubKey);
-            localStorage.setItem(STORAGE_WALLET_ADDRESS, pubKey);
+        if (isInstalled && wasConnected) {
+          // v6: getAddress() → { address: string, error? }
+          const addrResult = await freighterApi.getAddress();
+          if (addrResult.error) {
+            localStorage.removeItem(STORAGE_WALLET_CONNECTED);
+            localStorage.removeItem(STORAGE_WALLET_ADDRESS);
+            setAddress(null);
+          } else if (addrResult.address) {
+            setAddress(addrResult.address);
+            localStorage.setItem(STORAGE_WALLET_ADDRESS, addrResult.address);
           } else {
             localStorage.removeItem(STORAGE_WALLET_CONNECTED);
             localStorage.removeItem(STORAGE_WALLET_ADDRESS);
@@ -65,11 +72,16 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({
   const connect = useCallback(async () => {
     try {
       const freighterApi = await import("@stellar/freighter-api");
-      const pubKey = await freighterApi.requestAccess();
-      if (pubKey) {
-        setAddress(pubKey);
+      // v6: requestAccess() → { address: string, error? }
+      const result = await freighterApi.requestAccess();
+      if (result.error) {
+        console.error("Freighter access error:", result.error);
+        return;
+      }
+      if (result.address) {
+        setAddress(result.address);
         localStorage.setItem(STORAGE_WALLET_CONNECTED, "true");
-        localStorage.setItem(STORAGE_WALLET_ADDRESS, pubKey);
+        localStorage.setItem(STORAGE_WALLET_ADDRESS, result.address);
       }
     } catch (error) {
       console.error("Failed to connect wallet:", error);
@@ -78,7 +90,6 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const disconnect = useCallback(() => {
     setAddress(null);
-    // Explicitly record disconnection so auto-connect will NOT trigger
     localStorage.setItem(STORAGE_WALLET_CONNECTED, "false");
     localStorage.removeItem(STORAGE_WALLET_ADDRESS);
   }, []);
@@ -86,10 +97,14 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({
   const signTransaction = useCallback(
     async (xdr: string): Promise<string> => {
       const freighterApi = await import("@stellar/freighter-api");
-      const signedXdr = await freighterApi.signTransaction(xdr, {
+      // v6: signTransaction() → { signedTxXdr: string, signerAddress: string, error? }
+      const result = await freighterApi.signTransaction(xdr, {
         networkPassphrase: NETWORK_PASSPHRASE,
       });
-      return signedXdr;
+      if (result.error) {
+        throw new Error(result.error.message || "Freighter signing failed");
+      }
+      return result.signedTxXdr;
     },
     []
   );

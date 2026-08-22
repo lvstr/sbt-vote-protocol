@@ -24,7 +24,7 @@ export function getContract(): StellarSdk.Contract {
 export async function buildTransaction(
   sourceAddress: string,
   method: string,
-  params: StellarSdk.xdr.ScVal[]
+  params: StellarSdk.xdr.ScVal[],
 ): Promise<StellarSdk.Transaction> {
   const server = getServer();
   const account = await server.getAccount(sourceAddress);
@@ -46,12 +46,12 @@ export async function buildTransaction(
  * Submit a signed transaction and wait for result.
  */
 export async function submitTransaction(
-  signedXdr: string
+  signedXdr: string,
 ): Promise<rpc.Api.GetTransactionResponse> {
   const server = getServer();
-  const tx = StellarSdk.TransactionBuilder.fromXDR(
+  const tx = StellarSdk.TransactionBuilder.fromXdr(
     signedXdr,
-    NETWORK_PASSPHRASE
+    NETWORK_PASSPHRASE,
   );
   const response = await server.sendTransaction(tx);
 
@@ -73,7 +73,7 @@ export async function submitTransaction(
  * Fetch recent contract events from Soroban RPC.
  */
 export async function getContractEvents(
-  startLedger?: number
+  startLedger?: number,
 ): Promise<rpc.Api.GetEventsResponse> {
   const server = getServer();
 

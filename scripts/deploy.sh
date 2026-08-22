@@ -82,7 +82,18 @@ stellar contract invoke \
 echo "  ✓ Genesis Poll #1 created with 3 options"
 echo ""
 
-# Step 6: Output summary
+# Step 6: Automatically update frontend/.env.local
+echo "→ Updating frontend/.env.local..."
+cat <<EOF > frontend/.env.local
+NEXT_PUBLIC_CONTRACT_ID=$CONTRACT_ID
+NEXT_PUBLIC_NETWORK=testnet
+NEXT_PUBLIC_NETWORK_PASSPHRASE=Test SDF Network ; September 2015
+NEXT_PUBLIC_SOROBAN_RPC_URL=https://soroban-testnet.stellar.org
+EOF
+echo "  ✓ frontend/.env.local updated with new Contract ID"
+echo ""
+
+# Step 7: Output summary
 echo "╔══════════════════════════════════════════════════════════════╗"
 echo "║                    Deployment Complete!                     ║"
 echo "╠══════════════════════════════════════════════════════════════╣"
@@ -92,9 +103,4 @@ echo "║ Admin:       $DEPLOYER_ADDRESS"
 echo "║ Polls:       1 Genesis Poll created"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo ""
-echo "Next steps:"
-echo "  1. Copy the Contract ID to frontend/.env.local:"
-echo "     NEXT_PUBLIC_CONTRACT_ID=$CONTRACT_ID"
-echo ""
-echo "  2. Start the frontend:"
-echo "     cd frontend && npm install && npm run dev"
+echo "Frontend is ready at http://localhost:3000"
