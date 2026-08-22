@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { useWallet } from "@/hooks/useWallet";
 import { createPollOnChain, TransactionStatus } from "@/lib/contract";
 import { createStoredPoll, Poll } from "@/lib/pollStore";
@@ -12,11 +12,11 @@ interface CreatePollModalProps {
   onPollCreated: (newPoll: Poll) => void;
 }
 
-export function CreatePollModal({
+export const CreatePollModal: React.FC<CreatePollModalProps> = ({
   isOpen,
   onClose,
   onPollCreated,
-}: CreatePollModalProps) {
+}) => {
   const { address, isConnected, signTransaction } = useWallet();
 
   const [title, setTitle] = useState("");
@@ -75,7 +75,6 @@ export function CreatePollModal({
       await createPollOnChain(address, cleanedOptions.length, signTransaction);
       setTxStatus("submitting");
 
-      // Save to local registry and sync
       const newPoll = createStoredPoll({
         creator: address,
         creatorAlias: `${address.slice(0, 4)}...${address.slice(-4)}`,
@@ -90,12 +89,11 @@ export function CreatePollModal({
       setTimeout(() => {
         onPollCreated(newPoll);
         onClose();
-        // Reset form
         setTitle("");
         setDescription("");
         setOptions(["Setuju / Ya", "Tolak / Tidak"]);
         setTxStatus("idle");
-      }, 1000);
+      }, 800);
     } catch (err) {
       setTxStatus("error");
       setErrorMessage(
@@ -105,51 +103,43 @@ export function CreatePollModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-      <div className="glass-panel w-full max-w-2xl p-6 sm:p-8 space-y-6 relative max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
+      <div className="app-panel w-full max-w-xl p-6 sm:p-7 space-y-5 relative max-h-[90vh] overflow-y-auto">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+          className="absolute top-5 right-5 text-slate-400 hover:text-white p-1 rounded-md hover:bg-slate-800 transition-colors"
         >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          ✕
         </button>
 
         {/* Modal Header */}
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-brand-500/15 border border-brand-500/30 text-[11px] font-semibold text-brand-300">
-            <span>⚡ Permissionless Creation</span>
-          </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-white">
+        <div className="space-y-1 pr-6">
+          <h2 className="text-xl font-bold text-white">
             Buat Voting Baru
           </h2>
-          <p className="text-xs sm:text-sm text-slate-400">
-            Luncurkan voting Anda ke ledger Stellar Soroban. Siapa pun pemegang SBT dapat ikut berpartisipasi.
+          <p className="text-xs text-slate-400">
+            Luncurkan proposal baru ke blockchain Stellar. Setiap pemegang SBT dapat memberikan 1 suara.
           </p>
         </div>
 
         {!isConnected ? (
-          <div className="p-8 text-center bg-slate-900/60 rounded-xl border border-slate-800 space-y-3">
-            <p className="text-sm text-slate-300">
-              Anda harus menghubungkan wallet Freighter untuk membuat voting baru.
-            </p>
-            <p className="text-xs text-slate-500">
-              Setiap pembuatan voting terdaftar secara permanen di blockchain.
+          <div className="p-6 text-center bg-slate-950 rounded-lg border border-slate-800 space-y-2">
+            <p className="text-xs text-slate-300">
+              Hubungkan wallet Freighter Anda terlebih dahulu untuk membuat proposal.
             </p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Title */}
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <label className="block text-xs font-semibold text-slate-300">
-                Judul Voting / Proposal *
+                Judul Proposal *
               </label>
               <input
                 type="text"
                 required
-                placeholder="Contoh: Upgrade Protokol v22 atau Pemilihan Ketua Komunitas"
+                placeholder="Contoh: Alokasi Dana Komunitas untuk Ekosistem"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="input-field"
@@ -157,8 +147,8 @@ export function CreatePollModal({
             </div>
 
             {/* Category & Duration */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
                 <label className="block text-xs font-semibold text-slate-300">
                   Kategori *
                 </label>
@@ -176,15 +166,15 @@ export function CreatePollModal({
                   }
                   className="input-field"
                 >
-                  <option value="Governance">🏛️ Governance (Tata Kelola)</option>
-                  <option value="Grants">💰 Grants & Funding</option>
-                  <option value="Tech">⚙️ Tech & Development</option>
-                  <option value="Community">👥 Komunitas & Acara</option>
-                  <option value="General">🗳️ Umum / Jajak Pendapat</option>
+                  <option value="Governance">Governance (Tata Kelola)</option>
+                  <option value="Grants">Grants & Funding</option>
+                  <option value="Tech">Tech & Development</option>
+                  <option value="Community">Komunitas & Acara</option>
+                  <option value="General">Umum</option>
                 </select>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <label className="block text-xs font-semibold text-slate-300">
                   Durasi Voting *
                 </label>
@@ -193,7 +183,7 @@ export function CreatePollModal({
                   onChange={(e) => setDurationDays(Number(e.target.value))}
                   className="input-field"
                 >
-                  <option value={1}>1 Hari (Cepat)</option>
+                  <option value={1}>1 Hari</option>
                   <option value={3}>3 Hari</option>
                   <option value={7}>7 Hari (Standar)</option>
                   <option value={14}>14 Hari (2 Minggu)</option>
@@ -203,22 +193,22 @@ export function CreatePollModal({
             </div>
 
             {/* Description */}
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <label className="block text-xs font-semibold text-slate-300">
-                Deskripsi & Konteks Proposal *
+                Deskripsi Proposal *
               </label>
               <textarea
                 required
                 rows={3}
-                placeholder="Jelaskan latar belakang, tujuan voting, dan dampak dari pilihan yang tersedia..."
+                placeholder="Jelaskan rincian proposal, latar belakang, dan tujuan voting..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="input-field"
               />
             </div>
 
-            {/* Options List */}
-            <div className="space-y-3">
+            {/* Options */}
+            <div className="space-y-2.5">
               <div className="flex items-center justify-between">
                 <label className="block text-xs font-semibold text-slate-300">
                   Opsi Pilihan ({options.length}/8) *
@@ -227,9 +217,9 @@ export function CreatePollModal({
                   <button
                     type="button"
                     onClick={handleAddOption}
-                    className="text-xs font-semibold text-brand-300 hover:text-brand-200 flex items-center gap-1"
+                    className="text-xs text-blue-400 hover:text-blue-300 font-medium"
                   >
-                    <span>+ Tambah Opsi</span>
+                    + Tambah Opsi
                   </button>
                 )}
               </div>
@@ -237,7 +227,7 @@ export function CreatePollModal({
               <div className="space-y-2">
                 {options.map((opt, idx) => (
                   <div key={idx} className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-[11px] font-bold text-slate-300 shrink-0">
+                    <span className="w-6 h-6 rounded bg-slate-800 text-[11px] font-bold text-slate-400 flex items-center justify-center shrink-0">
                       {idx + 1}
                     </span>
                     <input
@@ -245,15 +235,14 @@ export function CreatePollModal({
                       required
                       value={opt}
                       onChange={(e) => handleOptionChange(idx, e.target.value)}
-                      placeholder={`Nama Opsi ${idx + 1}`}
-                      className="input-field py-2 text-xs"
+                      placeholder={`Opsi ${idx + 1}`}
+                      className="input-field py-1.5 text-xs"
                     />
                     {options.length > 2 && (
                       <button
                         type="button"
                         onClick={() => handleRemoveOption(idx)}
-                        className="text-slate-500 hover:text-red-400 p-2 rounded-lg hover:bg-slate-800/80 transition-colors"
-                        title="Hapus opsi"
+                        className="text-slate-500 hover:text-red-400 px-2 py-1 text-xs"
                       >
                         ✕
                       </button>
@@ -263,8 +252,8 @@ export function CreatePollModal({
               </div>
             </div>
 
-            {/* Submit Button */}
-            <div className="pt-2 space-y-3">
+            {/* Actions */}
+            <div className="pt-2 space-y-2">
               <button
                 type="submit"
                 disabled={
@@ -272,12 +261,12 @@ export function CreatePollModal({
                   txStatus === "signing" ||
                   txStatus === "submitting"
                 }
-                className="btn-primary w-full py-3 text-sm font-bold shadow-cyan-500/25"
+                className="btn-primary w-full py-2.5 font-medium"
               >
-                {txStatus === "building" && "Membangun Transaksi On-Chain..."}
+                {txStatus === "building" && "Membangun Transaksi..."}
                 {txStatus === "signing" && "Menunggu Tanda Tangan Freighter..."}
-                {txStatus === "submitting" && "Mendaftarkan ke Stellar Soroban..."}
-                {txStatus === "idle" && "Luncurkan Voting On-Chain 🚀"}
+                {txStatus === "submitting" && "Mengirim ke Blockchain Stellar..."}
+                {txStatus === "idle" && "Luncurkan Voting On-Chain"}
                 {txStatus === "success" && "Voting Berhasil Dibuat! ✓"}
                 {txStatus === "error" && "Coba Lagi"}
               </button>
@@ -289,4 +278,6 @@ export function CreatePollModal({
       </div>
     </div>
   );
-}
+};
+
+export default CreatePollModal;

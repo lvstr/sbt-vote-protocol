@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { TransactionStatus } from "@/lib/contract";
 
 interface Props {
@@ -7,7 +8,7 @@ interface Props {
   error?: string | null;
 }
 
-export function TransactionStatusBadge({ status, error }: Props) {
+export const TransactionStatusBadge: React.FC<Props> = ({ status, error }) => {
   if (status === "idle") return null;
 
   if (
@@ -16,8 +17,8 @@ export function TransactionStatusBadge({ status, error }: Props) {
     status === "submitting"
   ) {
     return (
-      <div className="flex items-center gap-2.5 p-3 rounded-xl bg-brand-950/60 border border-brand-500/40 text-brand-200 text-xs sm:text-sm">
-        <svg className="w-4 h-4 animate-spin text-brand-400 shrink-0" viewBox="0 0 24 24" fill="none">
+      <div className="flex items-center gap-2.5 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs">
+        <svg className="w-4 h-4 animate-spin text-blue-400 shrink-0" viewBox="0 0 24 24" fill="none">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
         </svg>
@@ -32,7 +33,7 @@ export function TransactionStatusBadge({ status, error }: Props) {
 
   if (status === "success") {
     return (
-      <div className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs sm:text-sm">
+      <div className="flex items-center gap-2.5 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs">
         <svg className="w-4 h-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
@@ -42,11 +43,15 @@ export function TransactionStatusBadge({ status, error }: Props) {
   }
 
   return (
-    <div className="flex items-center gap-2.5 p-3 rounded-xl bg-red-950/60 border border-red-500/50 text-red-200 text-xs sm:text-sm">
-      <svg className="w-4 h-4 text-red-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <div className="flex items-start gap-2.5 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-xs">
+      <svg className="w-4 h-4 text-red-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
       </svg>
-      <span>{error || "Transaksi gagal dieksekusi"}</span>
+      <div className="flex-1 min-w-0 break-words leading-relaxed text-[11px] sm:text-xs">
+        {error || "Transaksi gagal dieksekusi"}
+      </div>
     </div>
   );
-}
+};
+
+export default TransactionStatusBadge;

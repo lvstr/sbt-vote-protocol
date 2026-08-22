@@ -6,15 +6,15 @@ import { buildTransaction, submitTransaction, getServer, CONTRACT_ID, NETWORK_PA
  * Map VoteError codes to human-readable messages.
  */
 export const ERROR_MESSAGES: Record<number, string> = {
-  1: "Not authorized: only creator or admin can perform this action",
-  2: "Voting for this poll is currently closed",
-  3: "You have already voted on this poll (1-person-1-vote)",
-  4: "You do not have a Soulbound Token. Please claim your free SBT Voter ID first!",
-  5: "Invalid option selected",
-  6: "Contract is already initialized",
-  7: "You already hold a Soulbound Token",
-  8: "Poll not found",
-  9: "Invalid options count (must be between 2 and 20)",
+  1: "Tidak memiliki izin: Hanya pembuat atau admin yang dapat melakukan aksi ini",
+  2: "Periode voting untuk proposal ini sudah ditutup",
+  3: "Anda sudah memberikan suara pada voting ini (1-person-1-vote)",
+  4: "Anda belum memiliki Soulbound Token. Silakan klaim SBT Voter ID Anda terlebih dahulu!",
+  5: "Opsi pilihan tidak valid",
+  6: "Kontrak pintar sudah diinisialisasi sebelumnya",
+  7: "Anda sudah memiliki Soulbound Token (tidak perlu klaim ulang)",
+  8: "Voting / Proposal tidak ditemukan",
+  9: "Jumlah opsi pilihan harus antara 2 dan 20",
 };
 
 export type TransactionStatus =
@@ -47,6 +47,51 @@ export interface VoterStatusData {
   hasSbt: boolean;
   hasVoted: boolean;
   votedOption: number;
+}
+
+/**
+ * Parse raw Soroban / Stellar errors into clean, human-readable messages.
+ */
+export function parseContractError(error: unknown): string {
+  if (!error) return "Terjadi kesalahan saat memproses transaksi.";
+  const msg = error instanceof Error ? error.message : String(error);
+
+  // Contract custom error codes: Error(Contract, #N)
+  const codeMatch = msg.match(/Error\(Contract, #(\d+)\)/);
+  if (codeMatch) {
+    const code = Number(codeMatch[1]);
+    return ERROR_MESSAGES[code] || `Error Kontrak #${code}`;
+  }
+
+  // Non-existent function (contract not redeployed yet)
+  if (msg.includes("trying to invoke non-existent contract function") || msg.includes("non-existent contract function")) {
+    if (msg.includes("claim_sbt")) {
+      return "Fungsi 'claim_sbt' belum ada pada Contract ID saat ini. Silakan deploy ulang smart contract ke testnet dengan menjalankan 'make deploy'.";
+    }
+    return "Fungsi smart contract tidak ditemukan. Kontrak di testnet perlu diperbarui ke versi terbaru ('make deploy').";
+  }
+
+  // User rejected in Freighter
+  if (msg.includes("User declined") || msg.includes("rejected") || msg.includes("Declined")) {
+    return "Transaksi dibatalkan oleh pengguna di Freighter.";
+  }
+
+  // Missing value / WasmVm error
+  if (msg.includes("MissingValue") || msg.includes("WasmVm")) {
+    return "Terjadi kendala eksekusi Wasm pada smart contract. Pastikan contract ID di .env.local sesuai dengan deployment terbaru.";
+  }
+
+  // Insufficient balance
+  if (msg.includes("insufficient balance") || msg.includes("underfunded")) {
+    return "Saldo XLM testnet tidak mencukupi untuk biaya gas transaksi.";
+  }
+
+  // Fallback trimmed message
+  if (msg.length > 180) {
+    return msg.slice(0, 180) + "... (periksa console untuk detail teknis)";
+  }
+
+  return msg;
 }
 
 // Simulate-only account (zero-balance, used for read queries)
@@ -96,19 +141,24 @@ export async function claimSbt(
   signTransaction: (xdr: string) => Promise<string>
 ): Promise<string> {
   if (!CONTRACT_ID) {
-    await new Promise((res) => setTimeout(res, 800));
+    await new Promise((res) => setTimeout(res, 600));
     return "SUCCESS_MOCK";
   }
 
-  const params = [new StellarSdk.Address(voterAddress).toScVal()];
-  const tx = await buildTransaction(voterAddress, "claim_sbt", params);
-  const signedXdr = await signTransaction(tx.toXDR());
-  const result = await submitTransaction(signedXdr);
+  try {
+    const params = [new StellarSdk.Address(voterAddress).toScVal()];
+    const tx = await buildTransaction(voterAddress, "claim_sbt", params);
+    const signedXdr = await signTransaction(tx.toXDR());
+    const result = await submitTransaction(signedXdr);
 
-  if (result.status === "SUCCESS") {
-    return result.status;
+    if (result.status === "SUCCESS") {
+      return result.status;
+    }
+    throw new Error(`Transaction failed with status: ${result.status}`);
+  } catch (err) {
+    const parsed = parseContractError(err);
+    throw new Error(parsed);
   }
-  throw new Error(`Transaction failed with status: ${result.status}`);
 }
 
 /**
@@ -120,23 +170,28 @@ export async function createPollOnChain(
   signTransaction: (xdr: string) => Promise<string>
 ): Promise<{ status: string; pollId: number }> {
   if (!CONTRACT_ID) {
-    await new Promise((res) => setTimeout(res, 1000));
+    await new Promise((res) => setTimeout(res, 800));
     return { status: "SUCCESS_MOCK", pollId: Date.now() };
   }
 
-  const params = [
-    new StellarSdk.Address(creatorAddress).toScVal(),
-    StellarSdk.nativeToScVal(optionsCount, { type: "u32" }),
-  ];
+  try {
+    const params = [
+      new StellarSdk.Address(creatorAddress).toScVal(),
+      StellarSdk.nativeToScVal(optionsCount, { type: "u32" }),
+    ];
 
-  const tx = await buildTransaction(creatorAddress, "create_poll", params);
-  const signedXdr = await signTransaction(tx.toXDR());
-  const result = await submitTransaction(signedXdr);
+    const tx = await buildTransaction(creatorAddress, "create_poll", params);
+    const signedXdr = await signTransaction(tx.toXDR());
+    const result = await submitTransaction(signedXdr);
 
-  if (result.status === "SUCCESS") {
-    return { status: result.status, pollId: 0 };
+    if (result.status === "SUCCESS") {
+      return { status: result.status, pollId: 0 };
+    }
+    throw new Error(`Create poll failed: ${result.status}`);
+  } catch (err) {
+    const parsed = parseContractError(err);
+    throw new Error(parsed);
   }
-  throw new Error(`Create poll failed: ${result.status}`);
 }
 
 /**
@@ -149,24 +204,29 @@ export async function voteOnPoll(
   signTransaction: (xdr: string) => Promise<string>
 ): Promise<string> {
   if (!CONTRACT_ID) {
-    await new Promise((res) => setTimeout(res, 800));
+    await new Promise((res) => setTimeout(res, 600));
     return "SUCCESS_MOCK";
   }
 
-  const params = [
-    StellarSdk.nativeToScVal(pollId, { type: "u32" }),
-    new StellarSdk.Address(voterAddress).toScVal(),
-    StellarSdk.nativeToScVal(optionId, { type: "u32" }),
-  ];
+  try {
+    const params = [
+      StellarSdk.nativeToScVal(pollId, { type: "u32" }),
+      new StellarSdk.Address(voterAddress).toScVal(),
+      StellarSdk.nativeToScVal(optionId, { type: "u32" }),
+    ];
 
-  const tx = await buildTransaction(voterAddress, "vote", params);
-  const signedXdr = await signTransaction(tx.toXDR());
-  const result = await submitTransaction(signedXdr);
+    const tx = await buildTransaction(voterAddress, "vote", params);
+    const signedXdr = await signTransaction(tx.toXDR());
+    const result = await submitTransaction(signedXdr);
 
-  if (result.status === "SUCCESS") {
-    return result.status;
+    if (result.status === "SUCCESS") {
+      return result.status;
+    }
+    throw new Error(`Vote failed with status: ${result.status}`);
+  } catch (err) {
+    const parsed = parseContractError(err);
+    throw new Error(parsed);
   }
-  throw new Error(`Vote failed with status: ${result.status}`);
 }
 
 /**

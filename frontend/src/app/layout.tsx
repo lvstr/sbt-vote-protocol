@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { WalletProvider } from "@/context/WalletContext";
 
 export const metadata: Metadata = {
   title: "SBT Vote — Soulbound Voting Protocol",
@@ -34,7 +35,9 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <WalletProvider>{children}</WalletProvider>
+      </body>
     </html>
   );
 }
