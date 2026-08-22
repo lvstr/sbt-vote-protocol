@@ -1,118 +1,111 @@
-# Stellar Notes DApp
 
-**Stellar Notes DApp** - Blockchain-Based Decentralized Note-Taking System
+# SBT-Vote Protocol
+
+**SBT-Vote Protocol** - Blockchain-Based Decentralized E-Voting System
 
 ## Project Description
 
-Stellar Notes DApp is a decentralized smart contract solution built on the Stellar blockchain using Soroban SDK. It provides a secure, immutable platform for managing personal notes directly on the blockchain. The contract ensures that your data is stored transparently and is only manageable through predefined smart contract functions, eliminating reliance on centralized database providers.
+SBT-Vote Protocol is a decentralized smart contract solution built on the Stellar blockchain using the Soroban SDK. It provides a highly secure, tamper-proof platform for managing elections and community governance directly on the blockchain. The contract leverages **Soulbound Tokens (SBTs)**—digital assets that cannot be transferred or sold—to guarantee a strict "1 Verified Voter = 1 Vote" system.
 
-The system allows users to create, view, and delete notes, leveraging the efficiency and security of the Stellar network. Each note is uniquely identified and stored within the contract's instance storage, ensuring data persistence and reliability.
+The system allows organizations to mint voter identities, cast immutable votes, and tabulate results in real-time, eliminating reliance on centralized, vulnerable database providers. Every action is transparently recorded on the Stellar network, ensuring that the electoral process is mathematically verifiable and free from manipulation.
 
 ## Project Vision
 
-Our vision is to revolutionize personal productivity in the digital age by:
+Our vision is to revolutionize organizational governance and digital democracy by:
 
-- **Decentralizing Data**: Moving note-taking from centralized servers to a global, distributed blockchain
-- **Ensuring Ownership**: Empowering users to have complete control and ownership over their digital thoughts and information
-- **Guaranteeing Immutability**: Providing a permanent, tamper-proof record of notes that cannot be altered or deleted by third parties
-- **Enhancing Privacy**: Leveraging blockchain security to protect personal information from unauthorized access
-- **Building Trustless Systems**: Creating a platform where data integrity is guaranteed by code, not by company promises
+* **Decentralizing Elections**: Moving vote tabulation from closed servers to a global, distributed blockchain.
+* **Ensuring Absolute Integrity**: Empowering organizations with a voting system where double-voting and ballot stuffing are cryptographically impossible.
+* **Guaranteeing Immutability**: Providing a permanent, tamper-proof record of election results that cannot be altered by administrators or third parties.
+* **Building Trustless Systems**: Creating a platform where electoral integrity is guaranteed by smart contract code, not by human committees.
+* **Abstracting Complexity**: Allowing everyday users to participate in Web3 governance without needing to understand crypto wallets or gas fees.
 
-We envision a future where digital information is truly personal and sovereign, empowering individuals with complete autonomy over their digital assets.
+We envision a future where digital voting is truly transparent, sovereign, and accessible, empowering communities from university student associations to enterprise boards.
 
 ## Key Features
 
-### 1. **Simple Note Creation**
+### 1. **Soulbound Identity (SBT) Minting**
 
-- Create notes with just one function call
-- Specify title and content for each note
-- Automated ID generation for unique identification
-- Persistent storage on the Stellar blockchain
+* Issue unique, non-transferable tokens to verified voters.
+* Prevent vote-buying and token delegation by strictly disabling transfer functions.
+* Persistent voter tracking on the Stellar blockchain.
 
-### 2. **Efficient Data Retrieval**
+### 2. **Immutable Voting Mechanism**
 
-- Fetch all stored notes in a single call
-- Structured data representation for easy frontend integration
-- Quick access to your entire note collection
-- Real-time synchronization with the blockchain state
+* Cast votes securely with a single smart contract call.
+* Automated verification to ensure the voter holds a valid SBT and hasn't voted before.
+* Real-time, transparent incrementation of candidate vote counts.
 
-### 3. **Secure Deletion**
+### 3. **Efficient Data Retrieval & Analytics**
 
-- Remove specific notes using their unique IDs
-- Permanent removal from the contract storage
-- Clean and efficient storage management
-- Immediate update of the note list after deletion
+* Fetch election results and vote tallies instantly.
+* Emits Soroban events (`mint_sbt`, `vote_cast`) for seamless off-chain indexing.
+* Structured data representation for easy integration with modern web dashboards.
 
 ### 4. **Transparency and Security**
 
-- View all note activities on the blockchain
-- Blockchain-based verification of all storage actions
-- Immutable records of note creation and deletion
-- Protected against unauthorized modifications
+* View all election activities and voter participation on the blockchain.
+* Blockchain-based verification of all storage actions.
+* Protected against unauthorized modifications by rigorous authorization checks.
 
 ### 5. **Stellar Network Integration**
 
-- Leverages the high speed and low cost of Stellar
-- Built using the modern Soroban Smart Contract SDK
-- Scalable architecture for growing note collections
-- Interoperable with other Stellar-based services
+* Leverages the high speed and low cost of the Stellar network.
+* Built using the modern Soroban Smart Contract SDK.
+* Designed to support fee-bump transactions, enabling gas-less voting for end-users.
 
 ## Contract Details
 
-- Contract Address: CBLU4IUASQ4WUMOXBFLZRSBBLILGOH33GS4LUPKFBCCCMJCDQNMF7G2M
-  (Screenshot has been removed)
+* Contract Address: `[YOUR_CONTRACT_ADDRESS_WILL_BE_HERE]`
+* Network: Stellar Futurenet / Mainnet
 
 ## Future Scope
 
 ### Short-Term Enhancements
 
-1. **Note Encryption**: Support for end-to-end encryption of note content for enhanced privacy
-2. **Category Management**: Add tags and categories to organize notes efficiently
-3. **Rich Text Support**: Extend support beyond plain text to include Markdown and formatted content
-4. **Search Functionality**: Implement advanced search filters for large note collections
+1. **Mobile-First Integration**: Seamless integration with Flutter-based mobile applications for quick QR scanning and voting.
+2. **Real-Time Dashboards**: Connect Soroban event emitters to Next.js analytics dashboards for live election monitoring.
+3. **Pilot Deployment**: Execute a real-world mainnet pilot with local student organizations (e.g., University Student Associations) to validate the MVP.
 
 ### Medium-Term Development
 
-5. **Collaborative Notes**: Implement multi-signature requirements for shared or collaborative note-taking
-   - Shared access for multiple addresses
-   - Permission-based editing and viewing
-   - Version history tracking
-6. **Notification System**: Off-chain bridge to alert users of new updates or shared notes
-7. **Asset Attachment**: Capability to attach digital assets or tokens to specific notes
-8. **Inter-Contract Integration**: Allow other smart contracts to interact with and store data in the notes contract
+4. **Gas Abstraction via Relayers**: Implement robust fee-bump transaction relayers so voters never need to hold XLM.
+5. **Multi-Election Support**: Allow a single contract deployment to manage multiple concurrent polls or referendums.
+6. **Cross-Platform Identity**: Bridge off-chain database verification (e.g., Supabase/PostgreSQL) with on-chain wallet generation via NestJS backends.
 
 ### Long-Term Vision
 
-9. **Cross-Chain Synchronization**: Extend note storage to multiple blockchain networks
-10. **Decentralized UI Hosting**: Host the frontend on IPFS or similar decentralized platforms
-11. **AI-Powered Summarization**: Optional integration with AI to help users summarize their notes
-12. **Privacy Layers**: Implement zero-knowledge proofs for completely private note content
-13. **DAO Governance**: Community-driven protocol improvements and feature prioritization
-14. **Identity Management**: Integration with decentralized identity (DID) systems for user management
+7. **Zero-Knowledge Privacy**: Implement ZK-proofs to ensure the public can verify the total vote count without seeing who voted for whom.
+8. **Voting-as-a-Service (VaaS)**: Scale the protocol into a generalized platform for any regional organization or DAO within the Stellar ecosystem.
+9. **Cross-Chain Governance**: Extend SBT voting capabilities to interact with other blockchain networks.
 
 ### Enterprise Features
 
-15. **Corporate Documentation**: Adapt the system for secure corporate record-keeping
-16. **Immutable Logging**: Create time-locked logs for audit purposes
-17. **Automated Reporting**: Automatic note triggers for periodic reporting
-18. **Multi-Language Support**: Expand accessibility with internationalization
+10. **Corporate Shareholder Voting**: Adapt the system for secure, weighted voting based on enterprise equity.
+11. **Immutable Audit Logging**: Create time-locked logs of every administrative action for legal compliance.
+12. **Role-Based Access Control (RBAC)**: Multi-signature requirements for electoral commissions to open or close voting sessions.
 
 ---
 
 ## Technical Requirements
 
-- Soroban SDK
-- Rust programming language
-- Stellar blockchain network
+* Soroban SDK (`v20.0.0` or higher)
+* Rust programming language (`wasm32-unknown-unknown` target)
+* Stellar blockchain network
+* Node.js (for optional backend integrations)
 
 ## Getting Started
 
-Deploy the smart contract to Stellar's Soroban network and interact with it using the three main functions:
+Deploy the smart contract to Stellar's Soroban network and interact with it using the main functions:
 
-- `create_note()` - Create a new note with a title and content
-- `get_notes()` - Retrieve all stored notes from the contract
-- `delete_note()` - Remove a specific note by its ID
+* `initialize()` - Setup the election administrator and open the voting session.
+* `mint_token()` - Issue a non-transferable Soulbound Token to a verified voter address.
+* `vote()` - Cast a vote for a specific candidate ID.
+* `get_votes()` - Retrieve the total number of accumulated votes for a specific candidate.
 
 ---
 
-**Stellar Notes DApp** - Securing Your Thoughts on the Blockchain
+**SBT-Vote Protocol** - Securing Digital Democracy on the Blockchain
+
+---
+
+Struktur ini sudah mengadopsi format yang kamu inginkan secara utuh, namun isinya dimaksimalkan untuk menonjolkan fitur dan skalabilitas dari *smart contract voting* yang kita rancang.
