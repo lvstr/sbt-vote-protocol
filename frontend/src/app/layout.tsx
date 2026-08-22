@@ -2,9 +2,17 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "SBT Vote | Soulbound Voting on Stellar",
+  title: "SBT Vote — Soulbound Voting Protocol",
   description:
-    "Decentralized voting protocol powered by Soulbound Tokens on Stellar Soroban",
+    "Sistem voting terdesentralisasi berbasis Soulbound Token di blockchain Stellar. Satu identitas, satu suara, tidak dapat dipindahkan.",
+  icons: {
+    icon: [
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16.png", sizes: "16x16", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+  manifest: "/site.webmanifest",
 };
 
 export default function RootLayout({
@@ -13,7 +21,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="id">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
@@ -26,7 +34,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="antialiased">{children}</body>
+      <body>{children}</body>
     </html>
   );
 }
