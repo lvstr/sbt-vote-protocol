@@ -1,184 +1,306 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import Image from "next/image";
-import { WalletButton } from "@/components/WalletButton";
-import { VotePanel } from "@/components/VotePanel";
-import { ResultsPanel } from "@/components/ResultsPanel";
-import { EventFeed } from "@/components/EventFeed";
-import { VoterStatus } from "@/components/VoterStatus";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Navbar } from "@/components/Navbar";
+import { HeroLanding } from "@/components/HeroLanding";
+import { FeatureHighlights } from "@/components/FeatureHighlights";
+import { HowItWorks } from "@/components/HowItWorks";
+import { PollList } from "@/components/PollList";
+import { CreatePollModal } from "@/components/CreatePollModal";
+import { PollDetailModal } from "@/components/PollDetailModal";
+import { SbtBadgeModal } from "@/components/SbtBadgeModal";
+import { Footer } from "@/components/Footer";
 import { useWallet } from "@/hooks/useWallet";
 import {
-  getCandidateCount,
-  getVotes,
-  getVoterRecord,
-  isVotingOpen,
-} from "@/lib/contract";
+  getStoredPolls,
+  getStoredUserVotes,
+  hasStoredSbt,
+  claimStoredSbt,
+  castStoredVote,
+  Poll,
+  UserVoteRecord,
+} from "@/lib/pollStore";
+import { checkHasSbt } from "@/lib/contract";
 
 export default function Home() {
   const { address, isConnected } = useWallet();
-  const [candidateCount, setCandidateCount] = useState(0);
-  const [results, setResults] = useState<
-    { candidateId: number; votes: number }[]
-  >([]);
-  const [votingOpen, setVotingOpen] = useState(false);
-  const [voterStatus, setVoterStatus] = useState({
-    hasSbt: false,
-    hasVoted: false,
-  });
-  const [isLoading, setIsLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
-    try {
-      const [count, open] = await Promise.all([
-        getCandidateCount(),
-        isVotingOpen(),
-      ]);
-      setCandidateCount(count);
-      setVotingOpen(open);
+  // Navigation tab state
+  const [activeTab, setActiveTab] = useState<
+    "landing" | "polls" | "create" | "identity"
+  >("landing");
 
-      const votesPromises = Array.from({ length: count }, (_, i) =>
-        getVotes(i + 1).then((votes) => ({ candidateId: i + 1, votes }))
-      );
-      const votesResults = await Promise.all(votesPromises);
-      setResults(votesResults);
+  // Local & on-chain state
+  const [polls, setPolls] = useState<Poll[]>([]);
+  const [userVotes, setUserVotes] = useState<UserVoteRecord[]>([]);
+  const [hasSbt, setHasSbt] = useState<boolean>(false);
 
-      if (address) {
-        const record = await getVoterRecord(address);
-        setVoterStatus({
-          hasSbt: record.has_sbt,
-          hasVoted: record.has_voted,
-        });
+  // Modals state
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [selectedPoll, setSelectedPoll] = useState<Poll | null>(null);
+  const [isSbtModalOpen, setIsSbtModalOpen] = useState(false);
+
+  // Initialize and load polls
+  const refreshData = useCallback(async () => {
+    const loadedPolls = getStoredPolls();
+    setPolls(loadedPolls);
+
+    if (address) {
+      const votes = getStoredUserVotes(address);
+      setUserVotes(votes);
+
+      // Check SBT status on-chain + local fallback
+      const localSbt = hasStoredSbt(address);
+      if (localSbt) {
+        setHasSbt(true);
+      } else {
+        const onChainSbt = await checkHasSbt(address);
+        if (onChainSbt) {
+          claimStoredSbt(address);
+          setHasSbt(true);
+        } else {
+          setHasSbt(false);
+        }
       }
-    } catch (err) {
-      console.error("Failed to fetch contract data:", err);
-    } finally {
-      setIsLoading(false);
+    } else {
+      setUserVotes([]);
+      setHasSbt(false);
     }
   }, [address]);
 
   useEffect(() => {
-    if (!process.env.NEXT_PUBLIC_CONTRACT_ID) {
-      setIsLoading(false);
-      return;
+    refreshData();
+  }, [refreshData]);
+
+  // Handle URL query parameter e.g. ?poll=1
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const pollId = params.get("poll");
+      if (pollId) {
+        const found = getStoredPolls().find((p) => p.id === Number(pollId));
+        if (found) {
+          setSelectedPoll(found);
+        }
+      }
     }
-    fetchData();
-    const interval = setInterval(fetchData, 10000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+  }, []);
+
+  // Total stats
+  const totalVotes = useMemo(
+    () => polls.reduce((acc, p) => acc + p.totalVotes, 0),
+    [polls]
+  );
+  const featuredPoll = useMemo(
+    () => polls.find((p) => p.featured) || polls[0],
+    [polls]
+  );
+
+  // Handlers
+  const handlePollCreated = (newPoll: Poll) => {
+    refreshData();
+    setSelectedPoll(newPoll);
+  };
+
+  const handleVoteCast = (pollId: number, optionId: number) => {
+    if (!address) return;
+    const res = castStoredVote(pollId, optionId, address);
+    if (res.success && res.poll) {
+      setSelectedPoll(res.poll);
+      refreshData();
+    }
+  };
+
+  const handleSbtClaimed = () => {
+    if (address) {
+      claimStoredSbt(address);
+      setHasSbt(true);
+      refreshData();
+    }
+  };
+
+  const handlePollUpdated = (updatedPoll: Poll) => {
+    setSelectedPoll(updatedPoll);
+    refreshData();
+  };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-20">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Image
-              src="/soulbound.png"
-              alt="SBT Vote"
-              width={36}
-              height={36}
-              className="shrink-0"
+    <div className="min-h-screen flex flex-col justify-between">
+      {/* Top Navbar */}
+      <Navbar
+        activeTab={activeTab}
+        setActiveTab={(tab) => {
+          setActiveTab(tab);
+          if (tab === "create") setIsCreateModalOpen(true);
+          if (tab === "identity") setIsSbtModalOpen(true);
+        }}
+        hasSbt={hasSbt}
+        onOpenSbtModal={() => setIsSbtModalOpen(true)}
+      />
+
+      <main className="flex-1 w-full">
+        {/* LANDING VIEW */}
+        {activeTab === "landing" && (
+          <div>
+            {/* Hero */}
+            <HeroLanding
+              totalPolls={polls.length}
+              totalVotes={totalVotes}
+              hasSbt={hasSbt}
+              featuredPoll={featuredPoll}
+              onExplore={() => {
+                setActiveTab("polls");
+                const el = document.getElementById("voting-hub-section");
+                el?.scrollIntoView({ behavior: "smooth" });
+              }}
+              onCreatePoll={() => setIsCreateModalOpen(true)}
+              onClaimSbt={() => setIsSbtModalOpen(true)}
+              onSelectPoll={(p) => setSelectedPoll(p)}
             />
-            <div className="hidden sm:block">
-              <h1 className="text-sm font-semibold text-gray-900 leading-tight">
-                SBT Vote Protocol
-              </h1>
-              <p className="text-xs text-gray-500">Soulbound Voting on Stellar</p>
-            </div>
-          </div>
-          <WalletButton />
-        </div>
-      </header>
 
-      {/* Main */}
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6">
-        {/* Hero / Status */}
-        <section className="card overflow-hidden">
-          <div className="bg-gradient-to-r from-teal-700 to-teal-600 px-6 py-5 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
-                <svg className="w-5 h-5 text-gold-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-                </svg>
+            {/* Feature Highlights */}
+            <FeatureHighlights />
+
+            {/* How It Works */}
+            <HowItWorks />
+
+            {/* Live Voting Hub Preview on Landing */}
+            <section id="voting-hub-section" className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+                <div>
+                  <div className="inline-block px-2.5 py-0.5 rounded-full bg-brand-500/15 border border-brand-500/30 text-xs font-semibold text-brand-300 mb-2">
+                    ⚡ Voting Komunitas Terbuka
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-white">
+                    Jelajahi & Berikan Suara Anda
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-400 mt-1">
+                    Semua orang dapat membuat proposal dan memilih dengan token identitas Soulbound.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="btn-primary text-xs sm:text-sm px-4 py-2.5"
+                >
+                  + Buat Voting Baru
+                </button>
               </div>
-              <div>
-                <h2 className="text-white font-semibold">
-                  Soulbound Voting
-                </h2>
-                <p className="text-teal-100 text-sm">
-                  Satu identitas, satu suara — tidak dapat dipindahkan
-                </p>
-              </div>
-            </div>
-            <div
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${
-                votingOpen
-                  ? "bg-white/15 text-white"
-                  : "bg-red-500/20 text-red-100"
-              }`}
-            >
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  votingOpen ? "bg-green-300 animate-pulse" : "bg-red-300"
-                }`}
+
+              <PollList
+                polls={polls}
+                userVotes={userVotes}
+                userAddress={address}
+                onSelectPoll={(poll) => setSelectedPoll(poll)}
+                onCreatePoll={() => setIsCreateModalOpen(true)}
               />
-              {votingOpen ? "Voting Dibuka" : "Voting Ditutup"}
-            </div>
+            </section>
           </div>
-
-          {/* Info bar */}
-          <div className="px-6 py-3 bg-gray-50 border-t border-gray-100 flex items-center gap-6 text-xs text-gray-500 flex-wrap">
-            <span className="flex items-center gap-1.5">
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-1.053M18 6.75a3 3 0 11-6 0 3 3 0 016 0zm-8.25 6a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-              </svg>
-              {candidateCount} kandidat
-            </span>
-            <span className="flex items-center gap-1.5">
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-              </svg>
-              Stellar Testnet
-            </span>
-            <span className="flex items-center gap-1.5">
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-2.52a4.5 4.5 0 00-6.364-6.364L4.5 8.257" />
-              </svg>
-              Non-transferable token
-            </span>
-          </div>
-        </section>
-
-        {/* Voter status */}
-        {isConnected && (
-          <VoterStatus
-            hasSbt={voterStatus.hasSbt}
-            hasVoted={voterStatus.hasVoted}
-            isLoading={isLoading}
-          />
         )}
 
-        {/* Two column grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <VotePanel candidateCount={candidateCount} onVoteSuccess={fetchData} />
-          <ResultsPanel results={results} isLoading={isLoading} />
-        </div>
+        {/* DEDICATED POLLS / VOTING HUB VIEW */}
+        {activeTab === "polls" && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-white">
+                Voting Hub Komunitas
+              </h1>
+              <p className="text-sm text-slate-400 mt-1">
+                Daftar lengkap voting terbuka di Stellar. Saring berdasarkan kategori, status, atau cari topik tertentu.
+              </p>
+            </div>
 
-        {/* Event feed */}
-        <EventFeed />
+            <PollList
+              polls={polls}
+              userVotes={userVotes}
+              userAddress={address}
+              onSelectPoll={(poll) => setSelectedPoll(poll)}
+              onCreatePoll={() => setIsCreateModalOpen(true)}
+            />
+          </div>
+        )}
+
+        {/* DEDICATED CREATE VIEW */}
+        {activeTab === "create" && (
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
+            <button
+              onClick={() => setActiveTab("landing")}
+              className="text-xs text-slate-400 hover:text-white mb-6 flex items-center gap-1.5"
+            >
+              ← Kembali ke Beranda
+            </button>
+            <div className="glass-panel p-6 sm:p-8">
+              <h1 className="text-2xl font-bold text-white mb-2">
+                Buat Voting Baru
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-400 mb-6">
+                Klik tombol di bawah ini untuk membuka dialog pembuatan voting on-chain.
+              </p>
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="btn-primary w-full py-3 text-sm font-bold"
+              >
+                Buka Formulir Buat Voting 🚀
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* DEDICATED IDENTITY VIEW */}
+        {activeTab === "identity" && (
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
+            <button
+              onClick={() => setActiveTab("landing")}
+              className="text-xs text-slate-400 hover:text-white mb-6 flex items-center gap-1.5"
+            >
+              ← Kembali ke Beranda
+            </button>
+            <div className="glass-panel p-6 sm:p-8 text-center space-y-4">
+              <h1 className="text-2xl font-bold text-white">
+                Status Identitas Soulbound (SBT)
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
+                Kelola kredensial pemilih terverifikasi Anda untuk mengikuti pemilihan di Stellar Soroban.
+              </p>
+              <button
+                onClick={() => setIsSbtModalOpen(true)}
+                className="btn-gold px-6 py-3 text-sm font-bold mx-auto"
+              >
+                Buka Digital Passport SBT 🛡️
+              </button>
+            </div>
+          </div>
+        )}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-200 bg-white">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between text-xs text-gray-400">
-          <div className="flex items-center gap-2">
-            <Image src="/soulbound.png" alt="" width={18} height={18} />
-            <span>SBT Vote Protocol</span>
-          </div>
-          <span>Dibangun di atas Stellar Soroban</span>
-        </div>
-      </footer>
+      {/* MODALS */}
+      <CreatePollModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onPollCreated={handlePollCreated}
+      />
+
+      <PollDetailModal
+        poll={selectedPoll}
+        userVote={userVotes.find((v) => v.pollId === selectedPoll?.id)}
+        hasSbt={hasSbt}
+        onClose={() => setSelectedPoll(null)}
+        onVoteCast={handleVoteCast}
+        onClaimSbtPrompt={() => setIsSbtModalOpen(true)}
+        onPollUpdated={handlePollUpdated}
+      />
+
+      <SbtBadgeModal
+        isOpen={isSbtModalOpen}
+        hasSbt={hasSbt}
+        userVotes={userVotes}
+        polls={polls}
+        onClose={() => setIsSbtModalOpen(false)}
+        onSbtClaimed={handleSbtClaimed}
+      />
+
+      {/* Global Footer */}
+      <Footer />
     </div>
   );
 }

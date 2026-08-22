@@ -7,7 +7,6 @@
   "auth": [
     [],
     [],
-    [],
     []
   ],
   "ledger": {
@@ -51,24 +50,12 @@
                       "key": {
                         "vec": [
                           {
-                            "symbol": "CandidateCount"
+                            "symbol": "PollCount"
                           }
                         ]
                       },
                       "val": {
                         "u32": 0
-                      }
-                    },
-                    {
-                      "key": {
-                        "vec": [
-                          {
-                            "symbol": "VotingOpen"
-                          }
-                        ]
-                      },
-                      "val": {
-                        "bool": true
                       }
                     }
                   ]

@@ -10,7 +10,7 @@ mod voting;
 mod test;
 
 use soroban_sdk::{contract, contractimpl, Address, Env};
-use types::{DataKey, VoteError, VoterRecord};
+use types::{DataKey, Poll, VoteError, VoterRecord};
 
 #[contract]
 pub struct SbtVoteContract;
@@ -24,66 +24,82 @@ impl SbtVoteContract {
             return Err(VoteError::AlreadyInitialized);
         }
         env.storage().instance().set(&DataKey::Admin, &admin);
-        env.storage().instance().set(&DataKey::VotingOpen, &true);
-        env.storage().instance().set(&DataKey::CandidateCount, &0u32);
+        env.storage().instance().set(&DataKey::PollCount, &0u32);
         storage::extend_instance_ttl(&env);
         Ok(())
     }
 
-    /// Register a new candidate. Only admin can call.
-    /// Returns the new candidate's ID (1-indexed).
-    pub fn register_candidate(env: Env) -> Result<u32, VoteError> {
-        storage::require_admin(&env)?;
-        let count = storage::get_candidate_count(&env);
-        let new_id = count + 1;
-        env.storage().instance().set(&DataKey::CandidateCount, &new_id);
-        // Initialize vote count
-        env.storage().persistent().set(&DataKey::Candidate(new_id), &0u32);
+    /// Claim a Soulbound Token (SBT) voter identity.
+    /// Permissionless: Any user can register their address as a verified voter.
+    pub fn claim_sbt(env: Env, voter: Address) -> Result<(), VoteError> {
         storage::extend_instance_ttl(&env);
-        events::emit_candidate_registered(&env, new_id);
-        Ok(new_id)
+        sbt::claim_sbt(&env, &voter)
     }
 
-    /// Mint a Soulbound Token to a voter address. Only admin can call.
+    /// Mint a Soulbound Token to a voter address (Admin function).
     pub fn mint_sbt(env: Env, to: Address) -> Result<(), VoteError> {
         storage::extend_instance_ttl(&env);
         sbt::mint_sbt(&env, &to)
     }
 
-    /// Cast a vote for a candidate. Requires voter auth.
-    pub fn vote(env: Env, voter: Address, candidate_id: u32) -> Result<(), VoteError> {
+    /// Create a new community poll.
+    /// Permissionless: Anyone can launch a poll with 2-20 options.
+    /// Returns the newly assigned poll ID (1-indexed).
+    pub fn create_poll(
+        env: Env,
+        creator: Address,
+        options_count: u32,
+    ) -> Result<u32, VoteError> {
         storage::extend_instance_ttl(&env);
-        voting::cast_vote(&env, &voter, candidate_id)
+        voting::create_poll(&env, &creator, options_count)
     }
 
-    /// Open or close the voting period. Only admin can call.
-    pub fn set_voting_status(env: Env, is_open: bool) -> Result<(), VoteError> {
-        storage::require_admin(&env)?;
-        env.storage().instance().set(&DataKey::VotingOpen, &is_open);
+    /// Cast a vote for an option in a poll. Requires voter auth and SBT ownership.
+    pub fn vote(
+        env: Env,
+        poll_id: u32,
+        voter: Address,
+        option_id: u32,
+    ) -> Result<(), VoteError> {
         storage::extend_instance_ttl(&env);
-        events::emit_voting_status(&env, is_open);
-        Ok(())
+        voting::cast_vote(&env, poll_id, &voter, option_id)
+    }
+
+    /// Open or close a poll. Caller must be the poll creator or protocol admin.
+    pub fn set_poll_status(
+        env: Env,
+        poll_id: u32,
+        caller: Address,
+        is_open: bool,
+    ) -> Result<(), VoteError> {
+        storage::extend_instance_ttl(&env);
+        voting::set_poll_status(&env, poll_id, &caller, is_open)
     }
 
     // ─── Read-Only Queries ───────────────────────────────────────────────
 
-    /// Get the total votes for a candidate.
-    pub fn get_votes(env: Env, candidate_id: u32) -> u32 {
-        storage::get_candidate_votes(&env, candidate_id)
+    /// Get total number of polls created.
+    pub fn get_poll_count(env: Env) -> u32 {
+        storage::get_poll_count(&env)
     }
 
-    /// Get a voter's record (SBT status and vote status).
-    pub fn get_voter(env: Env, voter: Address) -> VoterRecord {
-        storage::get_voter_record(&env, &voter)
+    /// Get details of a specific poll.
+    pub fn get_poll(env: Env, poll_id: u32) -> Result<Poll, VoteError> {
+        storage::get_poll(&env, poll_id)
     }
 
-    /// Get the number of registered candidates.
-    pub fn get_candidate_count(env: Env) -> u32 {
-        storage::get_candidate_count(&env)
+    /// Get vote count for a specific option within a poll.
+    pub fn get_poll_votes(env: Env, poll_id: u32, option_id: u32) -> u32 {
+        storage::get_poll_votes(&env, poll_id, option_id)
     }
 
-    /// Check if voting is currently open.
-    pub fn is_voting_open(env: Env) -> bool {
-        storage::is_voting_open(&env)
+    /// Get voter record for a poll (SBT status, voted status, option voted).
+    pub fn get_poll_voter(env: Env, poll_id: u32, voter: Address) -> VoterRecord {
+        storage::get_poll_voter_record(&env, poll_id, &voter)
+    }
+
+    /// Check if an address holds a Soulbound Token.
+    pub fn has_sbt(env: Env, voter: Address) -> bool {
+        storage::has_global_sbt(&env, &voter)
     }
 }

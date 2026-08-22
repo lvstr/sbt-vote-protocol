@@ -59,17 +59,27 @@ stellar contract invoke \
 echo "  ✓ Contract initialized"
 echo ""
 
-# Step 5: Register candidates
-echo "→ Registering candidates..."
-for i in 1 2 3; do
-  stellar contract invoke \
-    --id "$CONTRACT_ID" \
-    --source-account "$SOURCE_ACCOUNT" \
-    --network "$NETWORK" \
-    -- \
-    register_candidate
-  echo "  ✓ Candidate #$i registered"
-done
+# Step 5: Claim SBT for deployer and create initial sample community polls
+echo "→ Claiming Soulbound Token for deployer..."
+stellar contract invoke \
+  --id "$CONTRACT_ID" \
+  --source-account "$SOURCE_ACCOUNT" \
+  --network "$NETWORK" \
+  -- \
+  claim_sbt \
+  --voter "$DEPLOYER_ADDRESS"
+echo "  ✓ Soulbound Token claimed"
+
+echo "→ Creating Genesis community poll..."
+stellar contract invoke \
+  --id "$CONTRACT_ID" \
+  --source-account "$SOURCE_ACCOUNT" \
+  --network "$NETWORK" \
+  -- \
+  create_poll \
+  --creator "$DEPLOYER_ADDRESS" \
+  --options_count 3
+echo "  ✓ Genesis Poll #1 created with 3 options"
 echo ""
 
 # Step 6: Output summary
@@ -79,7 +89,7 @@ echo "╠═══════════════════════�
 echo "║ Contract ID: $CONTRACT_ID"
 echo "║ Network:     $NETWORK"
 echo "║ Admin:       $DEPLOYER_ADDRESS"
-echo "║ Candidates:  3 registered"
+echo "║ Polls:       1 Genesis Poll created"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo ""
 echo "Next steps:"

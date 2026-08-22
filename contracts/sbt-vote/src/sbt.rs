@@ -2,23 +2,29 @@ use soroban_sdk::{Address, Env};
 
 use crate::{events, storage, types::VoteError};
 
-/// Mint an SBT to the given address. Only admin can call.
-/// Returns error if voter already has an SBT.
-pub fn mint_sbt(env: &Env, to: &Address) -> Result<(), VoteError> {
-    storage::require_admin(env)?;
+/// Permissionless Soulbound Token registration.
+/// Any voter can claim their SBT identity on-chain for voting.
+pub fn claim_sbt(env: &Env, voter: &Address) -> Result<(), VoteError> {
+    voter.require_auth();
 
-    let record = storage::get_voter_record(env, to);
-
-    if record.has_sbt {
+    if storage::has_global_sbt(env, voter) {
         return Err(VoteError::AlreadyHasSbt);
     }
 
-    let updated = crate::types::VoterRecord {
-        has_sbt: true,
-        has_voted: record.has_voted,
-    };
-    storage::set_voter_record(env, to, &updated);
-    events::emit_mint(env, to);
+    storage::set_global_sbt(env, voter);
+    events::emit_mint(env, voter);
+    Ok(())
+}
 
+/// Mint an SBT to the given address. Can be called by admin.
+pub fn mint_sbt(env: &Env, to: &Address) -> Result<(), VoteError> {
+    storage::require_admin(env)?;
+
+    if storage::has_global_sbt(env, to) {
+        return Err(VoteError::AlreadyHasSbt);
+    }
+
+    storage::set_global_sbt(env, to);
+    events::emit_mint(env, to);
     Ok(())
 }

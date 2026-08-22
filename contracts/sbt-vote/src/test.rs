@@ -24,8 +24,7 @@ fn test_initialize_success() {
     let admin = Address::generate(&env);
 
     client.initialize(&admin);
-    assert!(client.is_voting_open());
-    assert_eq!(client.get_candidate_count(), 0);
+    assert_eq!(client.get_poll_count(), 0);
 }
 
 #[test]
@@ -36,24 +35,27 @@ fn test_initialize_already_initialized() {
     assert!(result.is_err());
 }
 
-// ─── Candidate Registration ──────────────────────────────────────────────────
+// ─── SBT Claiming & Minting ──────────────────────────────────────────────────
 
 #[test]
-fn test_register_candidate() {
-    let (_env, client, _admin) = setup();
+fn test_claim_sbt_success() {
+    let (env, client, _admin) = setup();
+    let voter = Address::generate(&env);
 
-    let id1 = client.register_candidate();
-    assert_eq!(id1, 1);
-
-    let id2 = client.register_candidate();
-    assert_eq!(id2, 2);
-
-    assert_eq!(client.get_candidate_count(), 2);
-    assert_eq!(client.get_votes(&1), 0);
-    assert_eq!(client.get_votes(&2), 0);
+    assert!(!client.has_sbt(&voter));
+    client.claim_sbt(&voter);
+    assert!(client.has_sbt(&voter));
 }
 
-// ─── SBT Minting ────────────────────────────────────────────────────────────
+#[test]
+fn test_claim_sbt_already_has_sbt() {
+    let (env, client, _admin) = setup();
+    let voter = Address::generate(&env);
+
+    client.claim_sbt(&voter);
+    let result = client.try_claim_sbt(&voter);
+    assert!(result.is_err());
+}
 
 #[test]
 fn test_mint_sbt_success() {
@@ -61,126 +63,165 @@ fn test_mint_sbt_success() {
     let voter = Address::generate(&env);
 
     client.mint_sbt(&voter);
+    assert!(client.has_sbt(&voter));
+}
 
-    let record = client.get_voter(&voter);
-    assert!(record.has_sbt);
-    assert!(!record.has_voted);
+// ─── Poll Creation ───────────────────────────────────────────────────────────
+
+#[test]
+fn test_create_poll_success() {
+    let (env, client, _admin) = setup();
+    let creator = Address::generate(&env);
+
+    let poll_id_1 = client.create_poll(&creator, &3);
+    assert_eq!(poll_id_1, 1);
+
+    let poll_id_2 = client.create_poll(&creator, &5);
+    assert_eq!(poll_id_2, 2);
+
+    assert_eq!(client.get_poll_count(), 2);
+
+    let poll = client.get_poll(&1);
+    assert_eq!(poll.id, 1);
+    assert_eq!(poll.creator, creator);
+    assert_eq!(poll.options_count, 3);
+    assert!(poll.is_open);
+    assert_eq!(poll.total_votes, 0);
 }
 
 #[test]
-fn test_mint_sbt_already_has_sbt() {
+fn test_create_poll_invalid_options() {
     let (env, client, _admin) = setup();
-    let voter = Address::generate(&env);
+    let creator = Address::generate(&env);
 
-    client.mint_sbt(&voter);
-    let result = client.try_mint_sbt(&voter);
-    assert!(result.is_err());
+    // Less than 2 options
+    let result_low = client.try_create_poll(&creator, &1);
+    assert!(result_low.is_err());
+
+    // More than 20 options
+    let result_high = client.try_create_poll(&creator, &25);
+    assert!(result_high.is_err());
 }
 
-// ─── Voting ─────────────────────────────────────────────────────────────────
+// ─── Voting Mechanics ────────────────────────────────────────────────────────
 
 #[test]
 fn test_vote_success() {
     let (env, client, _admin) = setup();
-    let voter = Address::generate(&env);
-
-    client.register_candidate();
-    client.mint_sbt(&voter);
-    client.vote(&voter, &1);
-
-    assert_eq!(client.get_votes(&1), 1);
-    let record = client.get_voter(&voter);
-    assert!(record.has_voted);
-}
-
-#[test]
-fn test_vote_multiple_voters() {
-    let (env, client, _admin) = setup();
+    let creator = Address::generate(&env);
     let voter1 = Address::generate(&env);
     let voter2 = Address::generate(&env);
 
-    client.register_candidate();
-    client.register_candidate();
+    let poll_id = client.create_poll(&creator, &3);
 
-    client.mint_sbt(&voter1);
-    client.mint_sbt(&voter2);
+    client.claim_sbt(&voter1);
+    client.claim_sbt(&voter2);
 
-    client.vote(&voter1, &1);
-    client.vote(&voter2, &1);
+    client.vote(&poll_id, &voter1, &1);
+    client.vote(&poll_id, &voter2, &2);
 
-    assert_eq!(client.get_votes(&1), 2);
-    assert_eq!(client.get_votes(&2), 0);
+    assert_eq!(client.get_poll_votes(&poll_id, &1), 1);
+    assert_eq!(client.get_poll_votes(&poll_id, &2), 1);
+    assert_eq!(client.get_poll_votes(&poll_id, &3), 0);
+
+    let poll = client.get_poll(&poll_id);
+    assert_eq!(poll.total_votes, 2);
+
+    let record1 = client.get_poll_voter(&poll_id, &voter1);
+    assert!(record1.has_sbt);
+    assert!(record1.has_voted);
+    assert_eq!(record1.voted_option, 1);
 }
 
 #[test]
 fn test_vote_error_no_sbt() {
     let (env, client, _admin) = setup();
+    let creator = Address::generate(&env);
     let voter = Address::generate(&env);
 
-    client.register_candidate();
-    let result = client.try_vote(&voter, &1);
+    let poll_id = client.create_poll(&creator, &3);
+    let result = client.try_vote(&poll_id, &voter, &1);
     assert!(result.is_err());
 }
 
 #[test]
 fn test_vote_error_already_voted() {
     let (env, client, _admin) = setup();
+    let creator = Address::generate(&env);
     let voter = Address::generate(&env);
 
-    client.register_candidate();
-    client.mint_sbt(&voter);
-    client.vote(&voter, &1);
+    let poll_id = client.create_poll(&creator, &3);
+    client.claim_sbt(&voter);
 
-    let result = client.try_vote(&voter, &1);
+    client.vote(&poll_id, &voter, &1);
+    let result = client.try_vote(&poll_id, &voter, &2);
     assert!(result.is_err());
 }
 
 #[test]
-fn test_vote_error_invalid_candidate() {
+fn test_vote_across_multiple_polls() {
     let (env, client, _admin) = setup();
+    let creator = Address::generate(&env);
     let voter = Address::generate(&env);
 
-    client.mint_sbt(&voter);
-    // No candidates registered, ID 99 is invalid
-    let result = client.try_vote(&voter, &99);
-    assert!(result.is_err());
+    let poll1 = client.create_poll(&creator, &2);
+    let poll2 = client.create_poll(&creator, &3);
+
+    client.claim_sbt(&voter);
+
+    // Voter can vote once on poll 1 and once on poll 2
+    client.vote(&poll1, &voter, &1);
+    client.vote(&poll2, &voter, &2);
+
+    assert_eq!(client.get_poll_votes(&poll1, &1), 1);
+    assert_eq!(client.get_poll_votes(&poll2, &2), 1);
+}
+
+#[test]
+fn test_vote_error_invalid_option() {
+    let (env, client, _admin) = setup();
+    let creator = Address::generate(&env);
+    let voter = Address::generate(&env);
+
+    let poll_id = client.create_poll(&creator, &3);
+    client.claim_sbt(&voter);
+
+    // Option 0 is invalid
+    let res0 = client.try_vote(&poll_id, &voter, &0);
+    assert!(res0.is_err());
+
+    // Option 4 is invalid when max is 3
+    let res4 = client.try_vote(&poll_id, &voter, &4);
+    assert!(res4.is_err());
 }
 
 #[test]
 fn test_vote_error_voting_closed() {
     let (env, client, _admin) = setup();
+    let creator = Address::generate(&env);
     let voter = Address::generate(&env);
 
-    client.register_candidate();
-    client.mint_sbt(&voter);
-    client.set_voting_status(&false);
+    let poll_id = client.create_poll(&creator, &3);
+    client.claim_sbt(&voter);
 
-    let result = client.try_vote(&voter, &1);
+    client.set_poll_status(&poll_id, &creator, &false);
+
+    let result = client.try_vote(&poll_id, &voter, &1);
     assert!(result.is_err());
 }
 
-// ─── Voting Status ───────────────────────────────────────────────────────────
-
 #[test]
-fn test_set_voting_status() {
-    let (_env, client, _admin) = setup();
+fn test_set_poll_status_by_creator_and_admin() {
+    let (env, client, admin) = setup();
+    let creator = Address::generate(&env);
 
-    assert!(client.is_voting_open());
+    let poll_id = client.create_poll(&creator, &3);
 
-    client.set_voting_status(&false);
-    assert!(!client.is_voting_open());
+    // Creator closes
+    client.set_poll_status(&poll_id, &creator, &false);
+    assert!(!client.get_poll(&poll_id).is_open);
 
-    client.set_voting_status(&true);
-    assert!(client.is_voting_open());
-}
-
-// ─── Query Functions ─────────────────────────────────────────────────────────
-
-#[test]
-fn test_get_voter_default() {
-    let (env, client, _admin) = setup();
-    let unknown = Address::generate(&env);
-    let record = client.get_voter(&unknown);
-    assert!(!record.has_sbt);
-    assert!(!record.has_voted);
+    // Admin re-opens
+    client.set_poll_status(&poll_id, &admin, &true);
+    assert!(client.get_poll(&poll_id).is_open);
 }

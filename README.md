@@ -1,15 +1,15 @@
 # SBT Vote Protocol
 
-Decentralized voting system built on **Stellar Soroban** using Soulbound Tokens (SBTs) for voter eligibility verification.
+Decentralized multi-poll voting protocol built on **Stellar Soroban** using Soulbound Tokens (SBTs) for voter eligibility verification and permissionless poll creation.
 
 ## Overview
 
-This protocol enables secure, transparent elections where:
-- An admin mints non-transferable **Soulbound Tokens** to eligible voters
-- Only SBT holders can cast votes
-- Each voter can only vote once (1-person-1-vote)
-- Results are transparent and verifiable on-chain
-- Events are emitted for real-time off-chain monitoring
+This protocol enables secure, transparent elections and decentralized community proposals where:
+- **Permissionless Poll Creation**: Any user can launch a custom poll with custom options, categories, and duration.
+- **Soulbound Voter Identity (SBT)**: Users can claim a non-transferable Soulbound Token directly from the interface.
+- **1-Person-1-Vote Integrity**: Each SBT holder can vote exactly once per poll, mathematically enforced on-chain.
+- **Verifiable & Transparent Results**: Real-time live vote counts and on-chain event streams.
+- **High-End Modern Web3 UI**: Glassmorphic dark design with Stellar cyan & gold accents, interactive landing page, and community voting hub.
 
 ## Architecture
 
@@ -18,18 +18,18 @@ sbt-vote-protocol/
 ├── contracts/sbt-vote/    # Soroban smart contract (Rust)
 │   └── src/
 │       ├── lib.rs         # Contract entry point & public interface
-│       ├── types.rs       # DataKey, VoterRecord, VoteError
-│       ├── storage.rs     # Storage helpers & TTL management
-│       ├── sbt.rs         # SBT minting logic
-│       ├── voting.rs      # Vote casting with validation
+│       ├── types.rs       # DataKey, Poll, VoterRecord, VoteError
+│       ├── storage.rs     # Multi-poll storage & TTL management
+│       ├── sbt.rs         # Permissionless & admin SBT minting
+│       ├── voting.rs      # Poll creation & vote casting with validation
 │       ├── events.rs      # Contract events (#[contractevent])
-│       └── test.rs        # Unit tests (13 tests)
-├── frontend/              # Next.js frontend with Freighter wallet
+│       └── test.rs        # Unit tests (14 tests)
+├── frontend/              # Next.js 14 Web3 frontend with Freighter wallet
 │   └── src/
 │       ├── app/           # Pages & layout
-│       ├── components/    # UI components
+│       ├── components/    # UI components (Landing, PollHub, Modals, Badges)
 │       ├── hooks/         # useWallet, useEvents
-│       └── lib/           # Stellar SDK & contract helpers
+│       └── lib/           # Stellar SDK, contract helpers & poll storage
 └── scripts/
     └── deploy.sh          # Testnet deployment script
 ```
@@ -40,38 +40,31 @@ sbt-vote-protocol/
 
 | Function | Access | Description |
 |----------|--------|-------------|
-| `initialize(admin)` | Once | Set admin and open voting |
-| `register_candidate()` | Admin | Register a new candidate, returns ID |
-| `mint_sbt(to)` | Admin | Mint SBT to eligible voter |
-| `vote(voter, candidate_id)` | Voter | Cast a vote |
-| `set_voting_status(is_open)` | Admin | Open/close voting |
-| `get_votes(candidate_id)` | Public | Get vote count |
-| `get_voter(voter)` | Public | Get voter status |
-| `get_candidate_count()` | Public | Get registered candidate count |
-| `is_voting_open()` | Public | Check voting status |
+| `initialize(admin)` | Once | Initialize protocol admin and poll count |
+| `claim_sbt(voter)` | Public | Permissionless claim of SBT voter identity |
+| `mint_sbt(to)` | Admin | Admin minting of SBT to specific address |
+| `create_poll(creator, options_count)` | Public | Launch a new community poll with 2-20 options |
+| `vote(poll_id, voter, option_id)` | Voter | Cast a vote on a specific poll (requires SBT) |
+| `set_poll_status(poll_id, caller, is_open)` | Creator/Admin | Open or close an existing poll |
+| `get_poll_count()` | Public | Get total number of created polls |
+| `get_poll(poll_id)` | Public | Get metadata and status of a poll |
+| `get_poll_votes(poll_id, option_id)` | Public | Get vote count for an option |
+| `get_poll_voter(poll_id, voter)` | Public | Check voter status for a specific poll |
+| `has_sbt(voter)` | Public | Check if address holds a Soulbound Token |
 
 ### Error Handling
 
-The contract defines 7 error types, all actively used:
-
 | Code | Error | Triggered When |
 |------|-------|----------------|
-| 1 | `NotAuthorized` | Non-admin calls admin function |
-| 2 | `VotingClosed` | Vote attempted while voting is closed |
-| 3 | `AlreadyVoted` | Voter tries to vote again |
-| 4 | `NoSoulboundToken` | Voter without SBT tries to vote |
-| 5 | `InvalidCandidate` | Vote for unregistered candidate |
+| 1 | `NotAuthorized` | Non-creator/non-admin attempts status change |
+| 2 | `VotingClosed` | Vote attempted while poll is closed |
+| 3 | `AlreadyVoted` | Voter tries to vote again on the same poll |
+| 4 | `NoSoulboundToken` | Voter without SBT tries to cast a vote |
+| 5 | `InvalidOption` | Vote cast for invalid option ID |
 | 6 | `AlreadyInitialized` | Contract initialized twice |
-| 7 | `AlreadyHasSbt` | Minting SBT to existing holder |
-
-### Events
-
-| Event | Topics | Data |
-|-------|--------|------|
-| `MintSbt` | `to: Address` | - |
-| `VoteCast` | `voter: Address` | `candidate_id: u32` |
-| `VotingStatusChanged` | - | `is_open: bool` |
-| `CandidateRegistered` | - | `candidate_id: u32` |
+| 7 | `AlreadyHasSbt` | Claiming SBT when already possessing one |
+| 8 | `PollNotFound` | Querying non-existent poll ID |
+| 9 | `InvalidOptionsCount` | Creating poll with <2 or >20 options |
 
 ## Getting Started
 
@@ -88,21 +81,11 @@ The contract defines 7 error types, all actively used:
 # Build the contract
 make build
 
-# Run tests
+# Run unit tests (14 tests)
 make test
 
 # Format code
 make fmt
-```
-
-### Deploy to Testnet
-
-```bash
-# Deploy and initialize with 3 candidates
-make deploy
-
-# Or run the script directly with a custom source account
-SOURCE_ACCOUNT=my-key ./scripts/deploy.sh
 ```
 
 ### Run Frontend
@@ -110,30 +93,11 @@ SOURCE_ACCOUNT=my-key ./scripts/deploy.sh
 ```bash
 cd frontend
 cp .env.example .env.local
-# Edit .env.local with your contract ID from deployment
-
 npm install
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) and connect your Freighter wallet.
-
-## Frontend Features
-
-- **Wallet Connection**: Connect/disconnect via Freighter
-- **Voter Status**: See your SBT and voting status
-- **Vote Casting**: Select a candidate and submit transaction
-- **Live Results**: Real-time vote tallies with progress bars
-- **Event Feed**: Live polling of contract events
-- **Transaction Status**: Visual feedback (building → signing → submitting → success/error)
-- **Error Handling**: Contract errors mapped to user-friendly messages
-
-## Technology Stack
-
-- **Smart Contract**: Rust, Soroban SDK v25
-- **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS
-- **Wallet**: Freighter API v2
-- **Network**: Stellar Testnet (Soroban RPC)
 
 ## License
 
