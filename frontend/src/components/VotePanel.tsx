@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useWallet } from "@/hooks/useWallet";
 import { vote, ERROR_MESSAGES, TransactionStatus } from "@/lib/contract";
 import { TransactionStatusBadge } from "./TransactionStatus";
@@ -15,6 +15,15 @@ export function VotePanel({ candidateCount, onVoteSuccess }: VotePanelProps) {
   const [selectedCandidate, setSelectedCandidate] = useState<number>(0);
   const [txStatus, setTxStatus] = useState<TransactionStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Reset state when wallet disconnects
+  useEffect(() => {
+    if (!isConnected) {
+      setTxStatus("idle");
+      setErrorMessage(null);
+      setSelectedCandidate(0);
+    }
+  }, [isConnected]);
 
   const handleVote = async () => {
     if (!address || !selectedCandidate) return;

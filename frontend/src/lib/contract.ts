@@ -71,7 +71,7 @@ export async function vote(
   signTransaction: (xdr: string) => Promise<string>
 ): Promise<string> {
   const params = [
-    StellarSdk.nativeToScVal(voterAddress, { type: "address" }),
+    new StellarSdk.Address(voterAddress).toScVal(),
     StellarSdk.nativeToScVal(candidateId, { type: "u32" }),
   ];
 
@@ -121,6 +121,6 @@ export async function getVoterRecord(
   const result = await simulateAndDecode<{
     has_sbt: boolean;
     has_voted: boolean;
-  }>("get_voter", StellarSdk.nativeToScVal(voterAddress, { type: "address" }));
+  }>("get_voter", new StellarSdk.Address(voterAddress).toScVal());
   return result ?? { has_sbt: false, has_voted: false };
 }
