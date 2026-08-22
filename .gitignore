@@ -1,1 +1,26 @@
-target/*
+# Rust
+/target/
+**/*.rs.bk
+
+# Stellar
+.soroban/
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Environment
+.env
+.env.local
+frontend/.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,111 +1,140 @@
+# SBT Vote Protocol
 
-# SBT-Vote Protocol
+Decentralized voting system built on **Stellar Soroban** using Soulbound Tokens (SBTs) for voter eligibility verification.
 
-**SBT-Vote Protocol** - Blockchain-Based Decentralized E-Voting System
+## Overview
 
-## Project Description
+This protocol enables secure, transparent elections where:
+- An admin mints non-transferable **Soulbound Tokens** to eligible voters
+- Only SBT holders can cast votes
+- Each voter can only vote once (1-person-1-vote)
+- Results are transparent and verifiable on-chain
+- Events are emitted for real-time off-chain monitoring
 
-SBT-Vote Protocol is a decentralized smart contract solution built on the Stellar blockchain using the Soroban SDK. It provides a highly secure, tamper-proof platform for managing elections and community governance directly on the blockchain. The contract leverages **Soulbound Tokens (SBTs)**—digital assets that cannot be transferred or sold—to guarantee a strict "1 Verified Voter = 1 Vote" system.
+## Architecture
 
-The system allows organizations to mint voter identities, cast immutable votes, and tabulate results in real-time, eliminating reliance on centralized, vulnerable database providers. Every action is transparently recorded on the Stellar network, ensuring that the electoral process is mathematically verifiable and free from manipulation.
+```
+sbt-vote-protocol/
+├── contracts/sbt-vote/    # Soroban smart contract (Rust)
+│   └── src/
+│       ├── lib.rs         # Contract entry point & public interface
+│       ├── types.rs       # DataKey, VoterRecord, VoteError
+│       ├── storage.rs     # Storage helpers & TTL management
+│       ├── sbt.rs         # SBT minting logic
+│       ├── voting.rs      # Vote casting with validation
+│       ├── events.rs      # Contract events (#[contractevent])
+│       └── test.rs        # Unit tests (13 tests)
+├── frontend/              # Next.js frontend with Freighter wallet
+│   └── src/
+│       ├── app/           # Pages & layout
+│       ├── components/    # UI components
+│       ├── hooks/         # useWallet, useEvents
+│       └── lib/           # Stellar SDK & contract helpers
+└── scripts/
+    └── deploy.sh          # Testnet deployment script
+```
 
-## Project Vision
+## Smart Contract
 
-Our vision is to revolutionize organizational governance and digital democracy by:
+### Public Functions
 
-* **Decentralizing Elections**: Moving vote tabulation from closed servers to a global, distributed blockchain.
-* **Ensuring Absolute Integrity**: Empowering organizations with a voting system where double-voting and ballot stuffing are cryptographically impossible.
-* **Guaranteeing Immutability**: Providing a permanent, tamper-proof record of election results that cannot be altered by administrators or third parties.
-* **Building Trustless Systems**: Creating a platform where electoral integrity is guaranteed by smart contract code, not by human committees.
-* **Abstracting Complexity**: Allowing everyday users to participate in Web3 governance without needing to understand crypto wallets or gas fees.
+| Function | Access | Description |
+|----------|--------|-------------|
+| `initialize(admin)` | Once | Set admin and open voting |
+| `register_candidate()` | Admin | Register a new candidate, returns ID |
+| `mint_sbt(to)` | Admin | Mint SBT to eligible voter |
+| `vote(voter, candidate_id)` | Voter | Cast a vote |
+| `set_voting_status(is_open)` | Admin | Open/close voting |
+| `get_votes(candidate_id)` | Public | Get vote count |
+| `get_voter(voter)` | Public | Get voter status |
+| `get_candidate_count()` | Public | Get registered candidate count |
+| `is_voting_open()` | Public | Check voting status |
 
-We envision a future where digital voting is truly transparent, sovereign, and accessible, empowering communities from university student associations to enterprise boards.
+### Error Handling
 
-## Key Features
+The contract defines 7 error types, all actively used:
 
-### 1. **Soulbound Identity (SBT) Minting**
+| Code | Error | Triggered When |
+|------|-------|----------------|
+| 1 | `NotAuthorized` | Non-admin calls admin function |
+| 2 | `VotingClosed` | Vote attempted while voting is closed |
+| 3 | `AlreadyVoted` | Voter tries to vote again |
+| 4 | `NoSoulboundToken` | Voter without SBT tries to vote |
+| 5 | `InvalidCandidate` | Vote for unregistered candidate |
+| 6 | `AlreadyInitialized` | Contract initialized twice |
+| 7 | `AlreadyHasSbt` | Minting SBT to existing holder |
 
-* Issue unique, non-transferable tokens to verified voters.
-* Prevent vote-buying and token delegation by strictly disabling transfer functions.
-* Persistent voter tracking on the Stellar blockchain.
+### Events
 
-### 2. **Immutable Voting Mechanism**
-
-* Cast votes securely with a single smart contract call.
-* Automated verification to ensure the voter holds a valid SBT and hasn't voted before.
-* Real-time, transparent incrementation of candidate vote counts.
-
-### 3. **Efficient Data Retrieval & Analytics**
-
-* Fetch election results and vote tallies instantly.
-* Emits Soroban events (`mint_sbt`, `vote_cast`) for seamless off-chain indexing.
-* Structured data representation for easy integration with modern web dashboards.
-
-### 4. **Transparency and Security**
-
-* View all election activities and voter participation on the blockchain.
-* Blockchain-based verification of all storage actions.
-* Protected against unauthorized modifications by rigorous authorization checks.
-
-### 5. **Stellar Network Integration**
-
-* Leverages the high speed and low cost of the Stellar network.
-* Built using the modern Soroban Smart Contract SDK.
-* Designed to support fee-bump transactions, enabling gas-less voting for end-users.
-
-## Contract Details
-
-* Contract Address: `[YOUR_CONTRACT_ADDRESS_WILL_BE_HERE]`
-* Network: Stellar Futurenet / Mainnet
-
-## Future Scope
-
-### Short-Term Enhancements
-
-1. **Mobile-First Integration**: Seamless integration with Flutter-based mobile applications for quick QR scanning and voting.
-2. **Real-Time Dashboards**: Connect Soroban event emitters to Next.js analytics dashboards for live election monitoring.
-3. **Pilot Deployment**: Execute a real-world mainnet pilot with local student organizations (e.g., University Student Associations) to validate the MVP.
-
-### Medium-Term Development
-
-4. **Gas Abstraction via Relayers**: Implement robust fee-bump transaction relayers so voters never need to hold XLM.
-5. **Multi-Election Support**: Allow a single contract deployment to manage multiple concurrent polls or referendums.
-6. **Cross-Platform Identity**: Bridge off-chain database verification (e.g., Supabase/PostgreSQL) with on-chain wallet generation via NestJS backends.
-
-### Long-Term Vision
-
-7. **Zero-Knowledge Privacy**: Implement ZK-proofs to ensure the public can verify the total vote count without seeing who voted for whom.
-8. **Voting-as-a-Service (VaaS)**: Scale the protocol into a generalized platform for any regional organization or DAO within the Stellar ecosystem.
-9. **Cross-Chain Governance**: Extend SBT voting capabilities to interact with other blockchain networks.
-
-### Enterprise Features
-
-10. **Corporate Shareholder Voting**: Adapt the system for secure, weighted voting based on enterprise equity.
-11. **Immutable Audit Logging**: Create time-locked logs of every administrative action for legal compliance.
-12. **Role-Based Access Control (RBAC)**: Multi-signature requirements for electoral commissions to open or close voting sessions.
-
----
-
-## Technical Requirements
-
-* Soroban SDK (`v20.0.0` or higher)
-* Rust programming language (`wasm32-unknown-unknown` target)
-* Stellar blockchain network
-* Node.js (for optional backend integrations)
+| Event | Topics | Data |
+|-------|--------|------|
+| `MintSbt` | `to: Address` | - |
+| `VoteCast` | `voter: Address` | `candidate_id: u32` |
+| `VotingStatusChanged` | - | `is_open: bool` |
+| `CandidateRegistered` | - | `candidate_id: u32` |
 
 ## Getting Started
 
-Deploy the smart contract to Stellar's Soroban network and interact with it using the main functions:
+### Prerequisites
 
-* `initialize()` - Setup the election administrator and open the voting session.
-* `mint_token()` - Issue a non-transferable Soulbound Token to a verified voter address.
-* `vote()` - Cast a vote for a specific candidate ID.
-* `get_votes()` - Retrieve the total number of accumulated votes for a specific candidate.
+- [Rust](https://www.rust-lang.org/tools/install) with `wasm32v1-none` target
+- [Stellar CLI](https://developers.stellar.org/docs/tools/developer-tools/cli/install-cli)
+- [Node.js](https://nodejs.org/) >= 18
+- [Freighter Wallet](https://www.freighter.app/) browser extension
 
----
+### Build & Test
 
-**SBT-Vote Protocol** - Securing Digital Democracy on the Blockchain
+```bash
+# Build the contract
+make build
 
----
+# Run tests
+make test
 
-Struktur ini sudah mengadopsi format yang kamu inginkan secara utuh, namun isinya dimaksimalkan untuk menonjolkan fitur dan skalabilitas dari *smart contract voting* yang kita rancang.
+# Format code
+make fmt
+```
+
+### Deploy to Testnet
+
+```bash
+# Deploy and initialize with 3 candidates
+make deploy
+
+# Or run the script directly with a custom source account
+SOURCE_ACCOUNT=my-key ./scripts/deploy.sh
+```
+
+### Run Frontend
+
+```bash
+cd frontend
+cp .env.example .env.local
+# Edit .env.local with your contract ID from deployment
+
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) and connect your Freighter wallet.
+
+## Frontend Features
+
+- **Wallet Connection**: Connect/disconnect via Freighter
+- **Voter Status**: See your SBT and voting status
+- **Vote Casting**: Select a candidate and submit transaction
+- **Live Results**: Real-time vote tallies with progress bars
+- **Event Feed**: Live polling of contract events
+- **Transaction Status**: Visual feedback (building → signing → submitting → success/error)
+- **Error Handling**: Contract errors mapped to user-friendly messages
+
+## Technology Stack
+
+- **Smart Contract**: Rust, Soroban SDK v25
+- **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS
+- **Wallet**: Freighter API v2
+- **Network**: Stellar Testnet (Soroban RPC)
+
+## License
+
+MIT
