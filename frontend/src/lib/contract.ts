@@ -148,7 +148,7 @@ export async function claimSbt(
   try {
     const params = [new StellarSdk.Address(voterAddress).toScVal()];
     const tx = await buildTransaction(voterAddress, "claim_sbt", params);
-    const signedXdr = await signTransaction(tx.toXDR());
+    const signedXdr = await signTransaction(tx.toXdr());
     const result = await submitTransaction(signedXdr);
 
     if (result.status === "SUCCESS") {
@@ -181,7 +181,7 @@ export async function createPollOnChain(
     ];
 
     const tx = await buildTransaction(creatorAddress, "create_poll", params);
-    const signedXdr = await signTransaction(tx.toXDR());
+    const signedXdr = await signTransaction(tx.toXdr());
     const result = await submitTransaction(signedXdr);
 
     if (result.status === "SUCCESS") {
@@ -216,7 +216,7 @@ export async function voteOnPoll(
     ];
 
     const tx = await buildTransaction(voterAddress, "vote", params);
-    const signedXdr = await signTransaction(tx.toXDR());
+    const signedXdr = await signTransaction(tx.toXdr());
     const result = await submitTransaction(signedXdr);
 
     if (result.status === "SUCCESS") {
