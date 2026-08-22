@@ -1,6 +1,6 @@
 // sbt.rs
 use soroban_sdk::{Address, Env};
-use crate::{events, storage, types::{DataKey, VoterRecord}};
+use crate::{events, storage, types::DataKey};
 
 pub fn mint_sbt(env: &Env, to: Address) {
     storage::require_admin(env);

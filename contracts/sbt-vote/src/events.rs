@@ -1,12 +1,27 @@
 // events.rs
-use soroban_sdk::{Address, Env, Symbol};
+use soroban_sdk::{contractevent, Address, Env};
+
+#[contractevent]
+pub struct MintSbt {
+    #[topic]
+    pub to: Address,
+}
+
+#[contractevent]
+pub struct VoteCast {
+    #[topic]
+    pub voter: Address,
+    pub candidate_id: u32,
+}
 
 pub fn publish_mint_event(env: &Env, to: &Address) {
-    let topics = (Symbol::new(env, "mint_sbt"), to.clone());
-    env.events().publish(topics, true);
+    MintSbt { to: to.clone() }.publish(env);
 }
 
 pub fn publish_vote_event(env: &Env, voter: &Address, candidate_id: u32) {
-    let topics = (Symbol::new(env, "vote_cast"), voter.clone());
-    env.events().publish(topics, candidate_id);
+    VoteCast {
+        voter: voter.clone(),
+        candidate_id,
+    }
+    .publish(env);
 }
